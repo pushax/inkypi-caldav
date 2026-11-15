@@ -1,0 +1,6 @@
+{
+    "display_name": "CalDAV",
+    "id": "caldav",
+    "class": "CalDav",
+    "repository": "https://github.com/pushax/inkypi-caldav"
+}

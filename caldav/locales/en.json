@@ -1,0 +1,55 @@
+{
+    "name": "English",
+    "weekdays": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+    ],
+    "weekdays_short": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+    ],
+    "months": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ],
+    "months_gen": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ],
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "overdue": "Overdue",
+    "undated": "No due date",
+    "empty": "Nothing planned",
+    "all_day": "all day"
+}

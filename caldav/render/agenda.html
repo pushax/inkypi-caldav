@@ -1,0 +1,26 @@
+{% extends "plugin.html" %}
+
+{% block content %}
+<div class="cd cd-agenda" lang="{{ lang|e }}" style="font-size: {{ base_px }}px;">
+    <div class="cd-header">
+        <span class="cd-title">{{ title|e }}</span>
+        <span class="cd-subtitle">{{ subtitle }}</span>
+    </div>
+    <div class="cd-body" style="column-count: {{ columns }};">
+        {% for section in sections %}
+        <div class="cd-section {{ section.cls }}">
+            {% if show_heads %}<div class="cd-section-head">{{ section.label }}</div>{% endif %}
+            {% for e in section.entries %}
+            <div class="cd-entry {{ e.kind }}">
+                <span class="cd-time">{% if e.time %}{{ e.time }}{% elif e.kind == 'event' %}{{ labels.all_day }}{% endif %}</span>
+                <span class="cd-mark"></span>
+                <span class="cd-text">{{ e.title|e }}</span>
+            </div>
+            {% else %}
+            <div class="cd-empty">{{ labels.empty }}</div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

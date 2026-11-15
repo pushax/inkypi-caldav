@@ -1,0 +1,28 @@
+{% extends "plugin.html" %}
+
+{% block content %}
+<div class="cd cd-month" lang="{{ lang|e }}" style="font-size: {{ base_px }}px;">
+    <div class="cd-header">
+        <span class="cd-title">{{ title|e }}</span>
+        {% if overdue_count %}
+        <span class="cd-subtitle cd-overdue-note">{{ labels.overdue }}: {{ overdue_count }}</span>
+        {% endif %}
+    </div>
+    <div class="cd-weekdays">
+        {% for name in weekday_names %}<div>{{ name }}</div>{% endfor %}
+    </div>
+    <div class="cd-grid" style="grid-template-rows: repeat({{ weeks|length }}, 1fr);">
+        {% for week in weeks %}
+        {% for day in week %}
+        <div class="cd-cell{% if not day.in_month %} out{% endif %}{% if day.is_today %} today{% endif %}">
+            <div class="cd-num"><span>{{ day.num }}</span></div>
+            {% for e in day.entries %}
+            <div class="cd-chip {{ e.kind }}"><span class="cd-mark"></span>{% if e.time and e.time != '→' %}<b>{{ e.time }}</b> {% endif %}{{ e.title|e }}</div>
+            {% endfor %}
+            {% if day.more %}<div class="cd-more">+{{ day.more }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

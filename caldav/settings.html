@@ -1,0 +1,137 @@
+<div class="form-group">
+    <label for="caldavUrl" class="form-label">CalDAV URL:</label>
+    <input type="text" id="caldavUrl" name="caldavUrl" class="form-input"
+           placeholder="https://example.com/dav/calendars/username/" required>
+</div>
+
+<div class="form-group">
+    <label for="authType" class="form-label">Authorization:</label>
+    <select id="authType" name="authType" class="form-input">
+        <option value="basic">Basic (username + token/password)</option>
+        <option value="bearer">Bearer token</option>
+        <option value="none">None</option>
+    </select>
+</div>
+
+<div class="form-group" id="usernameGroup">
+    <label for="username" class="form-label">Username:</label>
+    <input type="text" id="username" name="username" class="form-input" autocomplete="off">
+</div>
+
+<div class="form-group auth-secret">
+    <label for="token" class="form-label">Token / password:</label>
+    <input type="password" id="token" name="token" class="form-input" autocomplete="new-password"
+           placeholder="leave empty to read it from .env">
+</div>
+
+<div class="form-group auth-secret">
+    <label for="tokenEnvKey" class="form-label">.env key (used when the token field is empty):</label>
+    <input type="text" id="tokenEnvKey" name="tokenEnvKey" class="form-input"
+           placeholder="{{ default_env_key }}">
+</div>
+
+<div class="form-group">
+    <label for="verifyTls" class="form-label">Verify TLS certificate:</label>
+    <select id="verifyTls" name="verifyTls" class="form-input">
+        <option value="true">Yes</option>
+        <option value="false">No (self-signed)</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="calendars" class="form-label">Calendars (comma separated names, empty = all):</label>
+    <input type="text" id="calendars" name="calendars" class="form-input" placeholder="Inbox, Home">
+</div>
+
+<div class="form-group">
+    <label for="view" class="form-label">View:</label>
+    <select id="view" name="view" class="form-input">
+        <option value="agenda">Agenda (list by day)</option>
+        <option value="today">Today only (single column)</option>
+        <option value="month">Month grid</option>
+    </select>
+</div>
+
+<div class="form-group" id="daysGroup">
+    <label for="days" class="form-label">Days ahead (agenda):</label>
+    <input type="number" id="days" name="days" class="form-input" min="1" max="60" value="7">
+</div>
+
+<div class="form-group">
+    <label for="showEvents" class="form-label">Show events (VEVENT):</label>
+    <select id="showEvents" name="showEvents" class="form-input">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="showTasks" class="form-label">Show tasks (VTODO):</label>
+    <select id="showTasks" name="showTasks" class="form-input">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="showUndated" class="form-label">Show tasks without a due date (agenda):</label>
+    <select id="showUndated" name="showUndated" class="form-input">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="language" class="form-label">Language:</label>
+    <select id="language" name="language" class="form-input">
+        {% for code, name in languages %}
+        <option value="{{ code }}">{{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="weekStart" class="form-label">Week starts on:</label>
+    <select id="weekStart" name="weekStart" class="form-input">
+        <option value="monday">Monday</option>
+        <option value="sunday">Sunday</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="title" class="form-label">Title (optional):</label>
+    <input type="text" id="title" name="title" class="form-input" placeholder="default: weekday / month">
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const fields = ['caldavUrl', 'authType', 'username', 'token', 'tokenEnvKey', 'verifyTls',
+                        'calendars', 'view', 'days', 'showEvents', 'showTasks', 'showUndated',
+                        'language', 'weekStart', 'title'];
+
+        if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
+            fields.forEach((name) => {
+                const el = document.getElementById(name);
+                const saved = pluginSettings[name];
+                if (el && saved !== undefined && saved !== null && saved !== '') {
+                    el.value = saved;
+                }
+            });
+        }
+
+        const authType = document.getElementById('authType');
+        const view = document.getElementById('view');
+        const sync = () => {
+            document.getElementById('usernameGroup').style.display =
+                authType.value === 'basic' ? '' : 'none';
+            document.querySelectorAll('.auth-secret').forEach((el) => {
+                el.style.display = authType.value === 'none' ? 'none' : '';
+            });
+            document.getElementById('daysGroup').style.display =
+                view.value === 'agenda' ? '' : 'none';
+        };
+        authType.addEventListener('change', sync);
+        view.addEventListener('change', sync);
+        sync();
+    });
+</script>
