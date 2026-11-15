@@ -55,8 +55,16 @@ Typical URLs:
 | Radicale | `https://<host>/<username>/` |
 | Baikal | `https://<host>/dav.php/calendars/<username>/` |
 | Vikunja | `https://<host>/dav/principals/<username>/` |
+| iCloud | `https://caldav.icloud.com/` |
 
 A plain `.ics` URL also works, with or without authorization.
+
+### iCloud
+
+1. Turn on two-factor authentication for your Apple ID, then create an app-specific password at [account.apple.com](https://account.apple.com) → **Sign-In and Security** → **App-Specific Passwords**.
+2. In the plugin settings use URL `https://caldav.icloud.com/`, authorization **Basic**, your Apple ID email as the username and the app-specific password as the token.
+
+The plugin finds your calendars on whichever iCloud server holds them. iCloud Reminders are not available over CalDAV since iOS 13, so only events are shown; turn off **Show tasks** for iCloud.
 
 ### Keeping the token out of device.json
 

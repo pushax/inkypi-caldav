@@ -240,7 +240,7 @@ class CalDavClient:
         rt = props.get("{DAV:}resourcetype")
         return rt is not None and rt.find("c:calendar", NS) is not None
 
-    def _calendar_info(self, href, props):
+    def _calendar_info(self, href, props, base=None):
         name_el = props.get("{DAV:}displayname")
         name = (name_el.text or "").strip() if name_el is not None else ""
         slug = unquote(href.rstrip("/").rsplit("/", 1)[-1])
@@ -250,7 +250,7 @@ class CalDavClient:
             found = {c.get("name", "").upper() for c in comp_set.findall("c:comp", NS)}
             found.discard("")
             comps = found or None
-        return {"url": urljoin(self.url, href), "name": name or slug, "slug": slug, "components": comps}
+        return {"url": urljoin(base or self.url, href), "name": name or slug, "slug": slug, "components": comps}
 
     # -- Discovery ------------------------------------------------------------
     def discover(self):
@@ -294,7 +294,9 @@ class CalDavClient:
         if h_resp.status_code != 207:
             raise CalDavError(f"Cannot list calendars (HTTP {h_resp.status_code}).")
         calendars = [
-            self._calendar_info(h, p) for h, p in self._multistatus(h_resp) if self._is_calendar(p)
+            # Hrefs are relative to the server that answered, which may differ
+            # from self.url (iCloud moves calendars to a pNN-caldav.icloud.com host).
+            self._calendar_info(h, p, home_url) for h, p in self._multistatus(h_resp) if self._is_calendar(p)
         ]
         if not calendars:
             raise CalDavError("No calendars found at this URL. Try the direct calendar URL.")
