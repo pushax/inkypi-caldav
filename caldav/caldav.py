@@ -421,6 +421,46 @@ def _int(settings, key, default, lo, hi):
         return default
 
 
+SECRET_KEYS = ("token", "sourceToken[]")
+
+# Form list fields of one source -> the single-source setting names the
+# loading code reads. Settings saved before multiple sources existed use the
+# single-source names directly.
+SOURCE_FIELDS = {
+    "sourceUrl[]": "caldavUrl",
+    "sourceAuthType[]": "authType",
+    "sourceUsername[]": "username",
+    "sourceToken[]": "token",
+    "sourceTokenEnvKey[]": "tokenEnvKey",
+    "sourceVerifyTls[]": "verifyTls",
+    "sourceCalendars[]": "calendars",
+}
+
+
+def _sources(settings):
+    """Returns one settings dict per configured source, skipping empty URLs."""
+    if "sourceUrl[]" not in settings:
+        url = (settings.get("caldavUrl") or "").strip()
+        return [dict(settings, caldavUrl=url)] if url else []
+
+    def column(key):
+        value = settings.get(key)
+        if value is None:
+            return []
+        return value if isinstance(value, list) else [value]
+
+    columns = {name: column(key) for key, name in SOURCE_FIELDS.items()}
+    sources = []
+    for i, url in enumerate(columns["caldavUrl"]):
+        url = (url or "").strip()
+        if not url:
+            continue
+        source = {name: (values[i] if i < len(values) else "") for name, values in columns.items()}
+        source["caldavUrl"] = url
+        sources.append(source)
+    return sources
+
+
 class CalDav(BasePlugin):
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
@@ -430,11 +470,12 @@ class CalDav(BasePlugin):
         return template_params
 
     def generate_image(self, settings, device_config):
-        url = (settings.get("caldavUrl") or "").strip()
-        if not url:
+        sources = _sources(settings)
+        if not sources:
             raise RuntimeError("CalDAV URL is required.")
-        if not url.lower().startswith(("http://", "https://")):
-            raise RuntimeError("CalDAV URL must start with http:// or https://")
+        for source in sources:
+            if not source["caldavUrl"].lower().startswith(("http://", "https://")):
+                raise RuntimeError("CalDAV URL must start with http:// or https://")
 
         dimensions = device_config.get_resolution()
         if device_config.get_config("orientation") == "vertical":
@@ -468,8 +509,25 @@ class CalDav(BasePlugin):
         range_start = datetime.combine(first_day, time.min, tzinfo=tz)
         range_end = datetime.combine(last_day + timedelta(days=1), time.min, tzinfo=tz)
 
-        items = self._load_items(settings, device_config, url, range_start, range_end, tz,
-                                 show_events, show_tasks)
+        items, seen, errors = [], set(), []
+        for number, source in enumerate(sources, 1):
+            try:
+                loaded = self._load_items(source, device_config, source["caldavUrl"], range_start, range_end,
+                                          tz, show_events, show_tasks)
+            except RuntimeError as e:
+                if len(sources) == 1:
+                    raise
+                # One unreachable account must not blank the screen for the others.
+                logger.warning("CalDAV source %d failed: %s", number, e)
+                errors.append(f"Source {number}: {e}")
+                continue
+            for item in loaded:
+                key = (item["kind"], item["uid"] or item["title"], item["start"])
+                if key not in seen:
+                    seen.add(key)
+                    items.append(item)
+        if errors and len(errors) == len(sources):
+            raise RuntimeError(errors[0])
 
         fmt_time = (lambda d: d.strftime("%H:%M")) if time_format == "24h" else \
                    (lambda d: d.strftime("%I:%M %p").lstrip("0"))
@@ -483,7 +541,7 @@ class CalDav(BasePlugin):
             "lang": lang_code,  # lets the browser apply language rules, e.g. Greek uppercasing
             "base_px": base_px,
             # Never hand the secret to the HTML template.
-            "plugin_settings": {k: v for k, v in settings.items() if k != "token"},
+            "plugin_settings": {k: v for k, v in settings.items() if k not in SECRET_KEYS},
         }
         custom_title = (settings.get("title") or "").strip()
 

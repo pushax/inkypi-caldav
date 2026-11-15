@@ -19,6 +19,7 @@ An [InkyPi](https://github.com/fatihak/InkyPi) plugin that shows events and task
 - **Three views**: agenda for the next N days, today only (single column, larger type) and a month grid.
 - **Events and tasks**: `VEVENT` and `VTODO`. Tasks are placed on their due date, overdue tasks get their own block, completed tasks are hidden.
 - **Authorization**: Basic (username + token or password), Bearer token, or none. The secret can live in InkyPi's `.env` instead of the plugin settings.
+- **Several sources**: combine calendars from different servers and accounts (for example iCloud and Nextcloud) on one screen, each with its own authorization.
 - **Calendar discovery**: point it at a principal URL and it finds all calendars, or give it a single calendar URL. Optional filter by calendar name.
 - **Translations**: English by default, Russian and Greek included, more can be added as JSON files.
 - **No extra dependencies**: uses `requests`, `icalendar` and `recurring_ical_events`, which InkyPi already installs.
@@ -45,7 +46,8 @@ After the restart the plugin appears in the web UI as **CalDAV**.
 
 1. **CalDAV URL**: the principal, calendar home or single calendar URL of your server. Given a principal or home URL, the plugin discovers all calendars under it.
 2. **Authorization**: Basic (username plus password, app password or token), Bearer token, or none.
-3. Pick a view and save.
+3. Need calendars from another server or account? Press **+ Add source** and fill in its URL and authorization.
+4. Pick a view and save.
 
 Typical URLs:
 
@@ -64,7 +66,7 @@ A plain `.ics` URL also works, with or without authorization.
 1. Turn on two-factor authentication for your Apple ID, then create an app-specific password at [account.apple.com](https://account.apple.com) → **Sign-In and Security** → **App-Specific Passwords**.
 2. In the plugin settings use URL `https://caldav.icloud.com/`, authorization **Basic**, your Apple ID email as the username and the app-specific password as the token.
 
-The plugin finds your calendars on whichever iCloud server holds them. iCloud Reminders are not available over CalDAV since iOS 13, so only events are shown; turn off **Show tasks** for iCloud.
+The plugin finds your calendars on whichever iCloud server holds them. iCloud Reminders are not available over CalDAV since iOS 13, so only events come from iCloud.
 
 ### Keeping the token out of device.json
 
@@ -74,9 +76,16 @@ A token typed into the settings form is stored by InkyPi in plain text in `src/c
 CALDAV_TOKEN=your-secret
 ```
 
-The key name can be changed in the **.env key** field, which lets several plugin instances use different accounts.
+The key name can be changed in the **.env key** field, which lets several sources or plugin instances use different accounts:
+
+```
+CALDAV_TOKEN=nextcloud-app-password
+ICLOUD_TOKEN=icloud-app-specific-password
+```
 
 ## Settings
+
+Each source has its own block:
 
 | Setting | Description |
 |---|---|
@@ -86,7 +95,14 @@ The key name can be changed in the **.env key** field, which lets several plugin
 | Token / password | The secret; leave empty to read it from `.env` |
 | .env key | Name of the `.env` variable, `CALDAV_TOKEN` by default |
 | Verify TLS certificate | Turn off for a self-signed certificate |
-| Calendars | Comma-separated calendar names; empty means all |
+| Calendars | Comma-separated calendar names of this source; empty means all |
+
+Use **+ Add source** to add another block and **×** to remove one. If a source is unreachable, the others are still shown and the error goes to the InkyPi log; an error appears on the screen only when every source fails. The same event coming from two sources is shown once.
+
+The display settings apply to all sources:
+
+| Setting | Description |
+|---|---|
 | View | Agenda, Today only, or Month grid |
 | Days ahead | Agenda range, 1–60 days |
 | Show events / Show tasks | Toggle `VEVENT` and `VTODO` separately |

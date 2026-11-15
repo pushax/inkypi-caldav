@@ -1,47 +1,62 @@
-<div class="form-group">
-    <label for="caldavUrl" class="form-label">CalDAV URL:</label>
-    <input type="text" id="caldavUrl" name="caldavUrl" class="form-input"
-           placeholder="https://example.com/dav/calendars/username/" required>
-</div>
+<div id="caldavSources"></div>
 
 <div class="form-group">
-    <label for="authType" class="form-label">Authorization:</label>
-    <select id="authType" name="authType" class="form-input">
-        <option value="basic">Basic (username + token/password)</option>
-        <option value="bearer">Bearer token</option>
-        <option value="none">None</option>
-    </select>
+    <button type="button" id="addSource" class="action-button compact">+ Add source</button>
 </div>
 
-<div class="form-group" id="usernameGroup">
-    <label for="username" class="form-label">Username:</label>
-    <input type="text" id="username" name="username" class="form-input" autocomplete="off">
-</div>
+<template id="caldavSourceTemplate">
+    <fieldset class="caldav-source" style="border: 1px solid var(--border-color, #ccc); border-radius: 5px; padding: 10px; margin: 0 0 15px;">
+        <legend class="form-label">
+            Source <span class="source-number"></span>
+            <button type="button" class="remove-source action-button compact warn" style="margin-left: 8px; padding: 2px 8px;">&times;</button>
+        </legend>
 
-<div class="form-group auth-secret">
-    <label for="token" class="form-label">Token / password:</label>
-    <input type="password" id="token" name="token" class="form-input" autocomplete="new-password"
-           placeholder="leave empty to read it from .env">
-</div>
+        <div class="form-group">
+            <label class="form-label">CalDAV URL:</label>
+            <input type="text" name="sourceUrl[]" data-field="url" class="form-input"
+                   placeholder="https://example.com/dav/calendars/username/" required>
+        </div>
 
-<div class="form-group auth-secret">
-    <label for="tokenEnvKey" class="form-label">.env key (used when the token field is empty):</label>
-    <input type="text" id="tokenEnvKey" name="tokenEnvKey" class="form-input"
-           placeholder="{{ default_env_key }}">
-</div>
+        <div class="form-group">
+            <label class="form-label">Authorization:</label>
+            <select name="sourceAuthType[]" data-field="authType" class="form-input">
+                <option value="basic">Basic (username + token/password)</option>
+                <option value="bearer">Bearer token</option>
+                <option value="none">None</option>
+            </select>
+        </div>
 
-<div class="form-group">
-    <label for="verifyTls" class="form-label">Verify TLS certificate:</label>
-    <select id="verifyTls" name="verifyTls" class="form-input">
-        <option value="true">Yes</option>
-        <option value="false">No (self-signed)</option>
-    </select>
-</div>
+        <div class="form-group source-username">
+            <label class="form-label">Username:</label>
+            <input type="text" name="sourceUsername[]" data-field="username" class="form-input" autocomplete="off">
+        </div>
 
-<div class="form-group">
-    <label for="calendars" class="form-label">Calendars (comma separated names, empty = all):</label>
-    <input type="text" id="calendars" name="calendars" class="form-input" placeholder="Inbox, Home">
-</div>
+        <div class="form-group source-secret">
+            <label class="form-label">Token / password:</label>
+            <input type="password" name="sourceToken[]" data-field="token" class="form-input" autocomplete="new-password"
+                   placeholder="leave empty to read it from .env">
+        </div>
+
+        <div class="form-group source-secret">
+            <label class="form-label">.env key (used when the token field is empty):</label>
+            <input type="text" name="sourceTokenEnvKey[]" data-field="tokenEnvKey" class="form-input"
+                   placeholder="{{ default_env_key }}">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Verify TLS certificate:</label>
+            <select name="sourceVerifyTls[]" data-field="verifyTls" class="form-input">
+                <option value="true">Yes</option>
+                <option value="false">No (self-signed)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Calendars (comma separated names, empty = all):</label>
+            <input type="text" name="sourceCalendars[]" data-field="calendars" class="form-input" placeholder="Inbox, Home">
+        </div>
+    </fieldset>
+</template>
 
 <div class="form-group">
     <label for="view" class="form-label">View:</label>
@@ -105,11 +120,22 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const fields = ['caldavUrl', 'authType', 'username', 'token', 'tokenEnvKey', 'verifyTls',
-                        'calendars', 'view', 'days', 'showEvents', 'showTasks', 'showUndated',
+        const fields = ['view', 'days', 'showEvents', 'showTasks', 'showUndated',
                         'language', 'weekStart', 'title'];
+        const sourceFields = ['url', 'authType', 'username', 'token', 'tokenEnvKey', 'verifyTls', 'calendars'];
+        const sourceKeys = {
+            url: 'sourceUrl[]', authType: 'sourceAuthType[]', username: 'sourceUsername[]',
+            token: 'sourceToken[]', tokenEnvKey: 'sourceTokenEnvKey[]', verifyTls: 'sourceVerifyTls[]',
+            calendars: 'sourceCalendars[]',
+        };
+        // Settings saved before multiple sources existed.
+        const legacyKeys = {
+            url: 'caldavUrl', authType: 'authType', username: 'username', token: 'token',
+            tokenEnvKey: 'tokenEnvKey', verifyTls: 'verifyTls', calendars: 'calendars',
+        };
 
-        if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
+        const hasSaved = typeof loadPluginSettings !== 'undefined' && loadPluginSettings;
+        if (hasSaved) {
             fields.forEach((name) => {
                 const el = document.getElementById(name);
                 const saved = pluginSettings[name];
@@ -119,18 +145,68 @@
             });
         }
 
-        const authType = document.getElementById('authType');
+        const container = document.getElementById('caldavSources');
+        const template = document.getElementById('caldavSourceTemplate');
+
+        const syncSource = (block) => {
+            const auth = block.querySelector('[data-field="authType"]').value;
+            block.querySelector('.source-username').style.display = auth === 'basic' ? '' : 'none';
+            block.querySelectorAll('.source-secret').forEach((el) => {
+                el.style.display = auth === 'none' ? 'none' : '';
+            });
+        };
+        const renumber = () => {
+            const blocks = container.querySelectorAll('.caldav-source');
+            blocks.forEach((block, i) => {
+                block.querySelector('.source-number').textContent = i + 1;
+                block.querySelector('.remove-source').style.display = blocks.length > 1 ? '' : 'none';
+            });
+        };
+        const addSource = (values) => {
+            const block = template.content.firstElementChild.cloneNode(true);
+            sourceFields.forEach((field) => {
+                const v = values && values[field];
+                if (v !== undefined && v !== null && v !== '') {
+                    block.querySelector(`[data-field="${field}"]`).value = v;
+                }
+            });
+            block.querySelector('[data-field="authType"]').addEventListener('change', () => syncSource(block));
+            block.querySelector('.remove-source').addEventListener('click', () => {
+                block.remove();
+                renumber();
+            });
+            container.appendChild(block);
+            syncSource(block);
+            renumber();
+        };
+
+        const saved = [];
+        if (hasSaved && Array.isArray(pluginSettings[sourceKeys.url])) {
+            pluginSettings[sourceKeys.url].forEach((_, i) => {
+                const values = {};
+                sourceFields.forEach((field) => {
+                    const list = pluginSettings[sourceKeys[field]];
+                    values[field] = Array.isArray(list) ? list[i] : undefined;
+                });
+                saved.push(values);
+            });
+        } else if (hasSaved && pluginSettings[legacyKeys.url]) {
+            const values = {};
+            sourceFields.forEach((field) => { values[field] = pluginSettings[legacyKeys[field]]; });
+            saved.push(values);
+        }
+        if (saved.length) {
+            saved.forEach(addSource);
+        } else {
+            addSource();
+        }
+        document.getElementById('addSource').addEventListener('click', () => addSource());
+
         const view = document.getElementById('view');
         const sync = () => {
-            document.getElementById('usernameGroup').style.display =
-                authType.value === 'basic' ? '' : 'none';
-            document.querySelectorAll('.auth-secret').forEach((el) => {
-                el.style.display = authType.value === 'none' ? 'none' : '';
-            });
             document.getElementById('daysGroup').style.display =
                 view.value === 'agenda' ? '' : 'none';
         };
-        authType.addEventListener('change', sync);
         view.addEventListener('change', sync);
         sync();
     });
