@@ -70,11 +70,29 @@ The plugin finds your calendars on whichever iCloud server holds them. iCloud Re
 
 ### Keeping the token out of device.json
 
-A token typed into the settings form is stored by InkyPi in plain text in `src/config/device.json`. To avoid that, leave the token field empty and add the secret to InkyPi's `.env` file:
+A token typed into the settings form is stored by InkyPi in plain text in `src/config/device.json`. To avoid that, leave the token field empty and put the secret into InkyPi's `.env` file instead.
+
+**From the web UI** (recent InkyPi versions): on the InkyPi home page press the 🔑 button (**API Keys**) in the header and add a key named `CALDAV_TOKEN` with your secret as the value. This page edits the same `.env` file described below.
+
+**By hand over SSH**: `.env` lives in the root of the InkyPi repository you cloned during installation, next to `install/` and `src/`, usually `~/InkyPi/.env`. If you are not sure where that clone is, ask the installed copy:
+
+```bash
+dirname "$(readlink -f /usr/local/inkypi/src)"
+```
+
+Create or edit the `.env` file in that folder:
+
+```bash
+nano ~/InkyPi/.env
+```
+
+and add one line per secret:
 
 ```
 CALDAV_TOKEN=your-secret
 ```
+
+The plugin reads `.env` on every refresh, so no restart is needed.
 
 The key name can be changed in the **.env key** field, which lets several sources or plugin instances use different accounts:
 
